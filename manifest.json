@@ -1,0 +1,10 @@
+{
+  "id": "crystal_gameshark",
+  "name": "Crystal GameShark",
+  "version": "0.1.1",
+  "entry": "main.lua",
+  "api": 2,
+  "games": ["crystal"],
+  "category": "gameplay",
+  "description": "GameShark-style codes for Pokemon Crystal."
+}
