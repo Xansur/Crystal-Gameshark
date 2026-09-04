@@ -6,6 +6,6 @@
   "api": 2,
   "games": ["crystal"],
   "category": "gameplay",
-  "description": "GameShark-style codes for Pokemon Crystal."
-  "github": "Xansur/Crystal-Gameshark",
+  "description": "GameShark-style codes for Pokemon Crystal.",
+  "github": "Xansur/Crystal-Gameshark"
 }

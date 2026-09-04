@@ -4,12 +4,13 @@ on:
   push:
     branches:
       - main
+
   workflow_dispatch:
     inputs:
       version:
         description: "Version to release (example: 0.2.0)"
         required: false
-        default: ""
+        default: "0.2.0"
 
 permissions:
   contents: write
@@ -26,12 +27,13 @@ jobs:
         id: version
         shell: bash
         run: |
-          VERSION=$(python3 -c "import json; print(json.load(open('manifest.json'))['version'])")
+          VERSION="0.2.0"
 
           if [ -n "${{ github.event.inputs.version }}" ]; then
             VERSION="${{ github.event.inputs.version }}"
           fi
 
+          echo "Using version: $VERSION"
           echo "version=$VERSION" >> "$GITHUB_OUTPUT"
 
       - name: Create mod ZIP
@@ -40,7 +42,7 @@ jobs:
           VERSION="${{ steps.version.outputs.version }}"
           ZIP="crystal_gameshark-${VERSION}.zip"
 
-          zip -r "$ZIP" \
+          zip "$ZIP" \
             manifest.json \
             main.lua \
             README.md
