@@ -47,6 +47,7 @@ return function(mod)
   -- ============================================================
 
   local function giveItem(game, itemId, count)
+
     if not game
       or not game.save
       or not game.data
@@ -67,13 +68,16 @@ return function(mod)
     )
 
     if not ok then
+
       if mod.log and mod.log.error then
+
         mod.log:error(
           "Codes: Bag.add failed for "
           .. tostring(itemId)
           .. ": "
           .. tostring(result)
         )
+
       end
 
       return false
@@ -87,11 +91,14 @@ return function(mod)
   -- ============================================================
 
   local function setMoney(game, amount)
+
     if not game or not game.save then
       return false
     end
 
-    amount = math.floor(tonumber(amount) or 0)
+    amount = math.floor(
+      tonumber(amount) or 0
+    )
 
     if amount < 0 then
       amount = 0
@@ -128,7 +135,12 @@ return function(mod)
   -- GENERIC LIST MENU
   -- ============================================================
 
-  local function openList(game, title, items, onChoose)
+  local function openList(
+    game,
+    title,
+    items,
+    onChoose
+  )
 
     if not items or #items == 0 then
       return
@@ -145,9 +157,11 @@ return function(mod)
           keyRepeat = true,
 
           onChoose = function(item, menu)
+
             if item and onChoose then
               onChoose(item, menu)
             end
+
           end,
 
           onCancel = function()
@@ -178,7 +192,8 @@ return function(mod)
 
       if type(def) == "table" then
 
-        local dex = tonumber(def.dex)
+        local dex =
+          tonumber(def.dex)
 
         if dex
           and dex >= 1
@@ -190,6 +205,7 @@ return function(mod)
             dex = dex,
             name = def.name
           }
+
         end
       end
     end
@@ -202,7 +218,9 @@ return function(mod)
           return a.dex < b.dex
         end
 
-        return tostring(a.id) < tostring(b.id)
+        return tostring(a.id)
+          < tostring(b.id)
+
       end
     )
 
@@ -230,7 +248,8 @@ return function(mod)
 
   local function openWildPokemonMenu(game)
 
-    local rows = buildWildPokemonList(game)
+    local rows =
+      buildWildPokemonList(game)
 
     if #rows == 0 then
       return
@@ -243,11 +262,14 @@ return function(mod)
 
       function(item, menu)
 
-        if not item or not item.value then
+        if not item
+          or not item.value then
+
           return
         end
 
-        nextWildSpecies = item.value
+        nextWildSpecies =
+          item.value
 
         menu:close()
 
@@ -262,7 +284,9 @@ return function(mod)
         game.stack:push(
           TextBox.new(
             game,
-            ("NEXT WILD POKEMON:\n%s"):format(name)
+            ("NEXT WILD POKEMON:\n%s"):format(
+              name
+            )
           )
         )
 
@@ -370,15 +394,36 @@ return function(mod)
     end
 
     local function sortRows(a, b)
+
       return tostring(a.sortName)
         < tostring(b.sortName)
+
     end
 
-    table.sort(balls, sortRows)
-    table.sort(items, sortRows)
-    table.sort(tms, sortRows)
-    table.sort(hms, sortRows)
-    table.sort(keyItems, sortRows)
+    table.sort(
+      balls,
+      sortRows
+    )
+
+    table.sort(
+      items,
+      sortRows
+    )
+
+    table.sort(
+      tms,
+      sortRows
+    )
+
+    table.sort(
+      hms,
+      sortRows
+    )
+
+    table.sort(
+      keyItems,
+      sortRows
+    )
 
     return balls, items, tms, hms, keyItems
   end
@@ -399,8 +444,17 @@ return function(mod)
 
       function(item)
 
-        if giveItem(game, item.value, 1) then
-          playSound(game, "Get_Item1")
+        if giveItem(
+          game,
+          item.value,
+          1
+        ) then
+
+          playSound(
+            game,
+            "Get_Item1"
+          )
+
         end
 
       end
@@ -423,8 +477,17 @@ return function(mod)
 
       function(item)
 
-        if giveItem(game, item.value, 1) then
-          playSound(game, "Get_Item1")
+        if giveItem(
+          game,
+          item.value,
+          1
+        ) then
+
+          playSound(
+            game,
+            "Get_Item1"
+          )
+
         end
 
       end
@@ -457,8 +520,17 @@ return function(mod)
 
       function(item)
 
-        if giveItem(game, item.value, 1) then
-          playSound(game, "Get_Item1")
+        if giveItem(
+          game,
+          item.value,
+          1
+        ) then
+
+          playSound(
+            game,
+            "Get_Item1"
+          )
+
         end
 
       end
@@ -481,8 +553,17 @@ return function(mod)
 
       function(item)
 
-        if giveItem(game, item.value, 1) then
-          playSound(game, "Get_Key_Item")
+        if giveItem(
+          game,
+          item.value,
+          1
+        ) then
+
+          playSound(
+            game,
+            "Get_Key_Item"
+          )
+
         end
 
       end
@@ -530,7 +611,10 @@ return function(mod)
       rows,
 
       function(item)
-        expMultiplier = item.value
+
+        expMultiplier =
+          item.value
+
       end
     )
   end
@@ -573,10 +657,18 @@ return function(mod)
       function(item)
 
         local success =
-          setMoney(game, item.value)
+          setMoney(
+            game,
+            item.value
+          )
 
         if success then
-          playSound(game, "Press_AB")
+
+          playSound(
+            game,
+            "Press_AB"
+          )
+
         end
 
       end
@@ -586,8 +678,13 @@ return function(mod)
   -- ============================================================
   -- HEAL PARTY
   --
-  -- Uses Gen1Recomp's native Pokemon.heal()
-  -- so HP, PP and status are restored.
+  -- Restores:
+  --   * Full HP
+  --   * Status
+  --   * Full move PP
+  --
+  -- PP is restored directly from game.data.moves so the mod
+  -- uses the same move data currently loaded by the game.
   -- ============================================================
 
   local function healParty(game)
@@ -601,21 +698,67 @@ return function(mod)
 
     local healed = false
 
+    local moves =
+      game.data
+      and game.data.moves
+
     for _, mon in ipairs(game.save.party) do
 
       if type(mon) == "table"
         and not mon.isEgg then
 
-        local ok =
-          pcall(
-            Pokemon.heal,
-            mon
-          )
+        -- ======================================================
+        -- RESTORE HP
+        -- ======================================================
 
-        if ok then
-          healed = true
+        if mon.stats
+          and mon.stats.hp then
+
+          mon.hp =
+            mon.stats.hp
+
         end
 
+        -- ======================================================
+        -- CLEAR STATUS
+        -- ======================================================
+
+        mon.status = nil
+
+        -- ======================================================
+        -- RESTORE MOVE PP
+        -- ======================================================
+
+        if type(mon.moves) == "table"
+          and type(moves) == "table" then
+
+          for _, mv in ipairs(mon.moves) do
+
+            if type(mv) == "table"
+              and mv.id then
+
+              local moveDef =
+                moves[mv.id]
+
+              if type(moveDef) == "table"
+                and moveDef.pp then
+
+                local ppUps =
+                  tonumber(mv.ppUps) or 0
+
+                mv.pp =
+                  moveDef.pp
+                  + ppUps * math.floor(
+                      moveDef.pp / 5
+                    )
+
+              end
+
+            end
+          end
+        end
+
+        healed = true
       end
     end
 
@@ -670,7 +813,6 @@ return function(mod)
 
         end
       end
-
     end
 
     -- Fallback for data sets where badge IDs are directly
@@ -680,7 +822,9 @@ return function(mod)
       and game.data
       and type(game.data.items) == "table" then
 
-      for id, def in pairs(game.data.items) do
+      for id, def in pairs(
+        game.data.items
+      ) do
 
         if type(id) == "string"
           and id:upper():find(
@@ -741,7 +885,10 @@ return function(mod)
       rows,
 
       function(item)
-        genderMode = item.value
+
+        genderMode =
+          item.value
+
       end
     )
   end
@@ -955,10 +1102,12 @@ return function(mod)
             giveAllBadges(game)
 
           if success then
+
             playSound(
               game,
               "Press_AB"
             )
+
           end
 
           return
@@ -1114,7 +1263,10 @@ return function(mod)
         }
       )
 
-      return next(game, items)
+      return next(
+        game,
+        items
+      )
     end
   )
 
@@ -1166,7 +1318,10 @@ return function(mod)
     function(next, exp, ctx)
 
       local result =
-        next(exp, ctx)
+        next(
+          exp,
+          ctx
+        )
 
       if expMultiplier <= 1 then
         return result
@@ -1240,32 +1395,44 @@ return function(mod)
 
   mod.exports.clearNextWild =
     function()
+
       nextWildSpecies = nil
+
     end
 
   mod.exports.getNextWild =
     function()
+
       return nextWildSpecies
+
     end
 
   mod.exports.getExpMultiplier =
     function()
+
       return expMultiplier
+
     end
 
   mod.exports.getWalkThroughWalls =
     function()
+
       return walkThroughWalls
+
     end
 
   mod.exports.getShiny =
     function()
+
       return shinyEnabled
+
     end
 
   mod.exports.getGenderMode =
     function()
+
       return genderMode
+
     end
 
 end
