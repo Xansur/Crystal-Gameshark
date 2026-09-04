@@ -7,4 +7,5 @@
   "games": ["crystal"],
   "category": "gameplay",
   "description": "GameShark-style codes for Pokemon Crystal."
+  "github": "Xansur/Crystal-Gameshark",
 }
