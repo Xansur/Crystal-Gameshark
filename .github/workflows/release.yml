@@ -8,7 +8,7 @@ on:
   workflow_dispatch:
     inputs:
       version:
-        description: ""
+        description: "Version to release (leave blank to use manifest.json)"
         required: false
         default: ""
 
@@ -21,16 +21,29 @@ jobs:
 
     steps:
       - name: Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@v5
 
       - name: Read version
         id: version
         shell: bash
         run: |
-          VERSION="0.2.0"
+          VERSION=$(python3 - <<'PY'
+          import json
+
+          with open("manifest.json", encoding="utf-8") as f:
+              data = json.load(f)
+
+          print(data["version"])
+          PY
+          )
 
           if [ -n "${{ github.event.inputs.version }}" ]; then
             VERSION="${{ github.event.inputs.version }}"
+          fi
+
+          if [ -z "$VERSION" ]; then
+            echo "ERROR: Could not determine version."
+            exit 1
           fi
 
           echo "Using version: $VERSION"
