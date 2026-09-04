@@ -1,17 +1,14 @@
 return function(mod)
 
-  ---------------------------------------------------------------------------
-  -- CODES
-  -- Pokemon Crystal / Gen1Recomp
-  ---------------------------------------------------------------------------
-
   local ListMenu = require("src.ui.ListMenu")
   local Sound = require("src.core.Sound")
   local Bag = require("src.inventory.Bag")
+  local Pokemon = require("src.pokemon.Pokemon")
+  local TextBox = require("src.render.TextBox")
 
-  ---------------------------------------------------------------------------
-  -- State
-  ---------------------------------------------------------------------------
+  -- ============================================================
+  -- CODE STATE
+  -- ============================================================
 
   local nextWildSpecies = nil
   local expMultiplier = 1
@@ -19,114 +16,82 @@ return function(mod)
   local shinyEnabled = false
   local genderMode = "RANDOM"
 
-
-  ---------------------------------------------------------------------------
-  -- Utility
-  ---------------------------------------------------------------------------
+  -- ============================================================
+  -- HELPERS
+  -- ============================================================
 
   local function cleanName(name)
-
     if type(name) ~= "string" then
       return tostring(name)
     end
 
     return name:gsub("^Poke ", "")
-
   end
-
 
   local function playSound(game, sound)
-
     if game and game.data then
-
-      pcall(
-        Sound.play,
-        game.data,
-        sound
-      )
-
+      pcall(Sound.play, game.data, sound)
     end
-
   end
 
-
   local function toggleLabel(name, enabled)
-
     if enabled then
       return name .. ": ON"
     end
 
     return name .. ": OFF"
-
   end
 
-
-  ---------------------------------------------------------------------------
-  -- Give Item
-  ---------------------------------------------------------------------------
+  -- ============================================================
+  -- GIVE ITEM
+  -- ============================================================
 
   local function giveItem(game, itemId, count)
-
     if not game
       or not game.save
       or not game.data
       or not game.data.items
-      or not game.data.items[itemId]
-    then
+      or not game.data.items[itemId] then
+
       return false
     end
 
     count = count or 1
 
-    local ok, result =
-      pcall(
-        Bag.add,
-        game.save,
-        itemId,
-        count,
-        game.data
-      )
+    local ok, result = pcall(
+      Bag.add,
+      game.save,
+      itemId,
+      count,
+      game.data
+    )
 
     if not ok then
-
-      if mod.log
-        and mod.log.error
-      then
-
+      if mod.log and mod.log.error then
         mod.log:error(
-          "Codes: Bag.add failed for " ..
-          tostring(itemId) ..
-          ": " ..
-          tostring(result)
+          "Codes: Bag.add failed for "
+          .. tostring(itemId)
+          .. ": "
+          .. tostring(result)
         )
-
       end
 
       return false
-
     end
 
     return result ~= false
-
   end
 
-
-  ---------------------------------------------------------------------------
-  -- Money
-  ---------------------------------------------------------------------------
+  -- ============================================================
+  -- MONEY
+  -- ============================================================
 
   local function setMoney(game, amount)
-
-    if not game
-      or not game.save
-    then
+    if not game or not game.save then
       return false
     end
 
-    amount =
-      math.floor(
-        tonumber(amount) or 0
-      )
+    amount = math.floor(tonumber(amount) or 0)
 
     if amount < 0 then
       amount = 0
@@ -136,112 +101,65 @@ return function(mod)
       amount = 999999
     end
 
-
-    -- Primary Crystal money field.
     game.save.money = amount
 
-
-    -- Keep alternate player representation synchronized
-    -- when present.
     if type(game.save.player) == "table"
-      and game.save.player.money ~= nil
-    then
+      and game.save.player.money ~= nil then
 
-      game.save.player.money =
-        amount
-
+      game.save.player.money = amount
     end
 
-
     local primaryOK =
-      tonumber(game.save.money)
-      == amount
-
+      tonumber(game.save.money) == amount
 
     local playerOK = true
 
     if type(game.save.player) == "table"
-      and game.save.player.money ~= nil
-    then
+      and game.save.player.money ~= nil then
 
       playerOK =
-        tonumber(
-          game.save.player.money
-        ) == amount
-
+        tonumber(game.save.player.money) == amount
     end
 
-
     return primaryOK and playerOK
-
   end
 
+  -- ============================================================
+  -- GENERIC LIST MENU
+  -- ============================================================
 
-  ---------------------------------------------------------------------------
-  -- Generic List Menu
-  ---------------------------------------------------------------------------
+  local function openList(game, title, items, onChoose)
 
-  local function openList(
-    game,
-    title,
-    items,
-    onChoose
-  )
-
-    if not items
-      or #items == 0
-    then
+    if not items or #items == 0 then
       return
     end
 
     game.stack:push(
-
       ListMenu.new(
-
         game,
-
         title,
-
         items,
-
         {
           rows = 7,
-
           pageJump = true,
-
           keyRepeat = true,
 
-          onChoose =
-            function(item, menu)
-
-              if item
-                and onChoose
-              then
-
-                onChoose(
-                  item,
-                  menu
-                )
-
-              end
-
-            end,
-
-          onCancel =
-            function()
+          onChoose = function(item, menu)
+            if item and onChoose then
+              onChoose(item, menu)
             end
+          end,
+
+          onCancel = function()
+          end
         }
-
       )
-
     )
-
   end
 
-
-  ---------------------------------------------------------------------------
-  -- Wild Pokemon List
-  ---------------------------------------------------------------------------
+  -- ============================================================
+  -- WILD POKEMON LIST
+  -- ============================================================
 
   local function buildWildPokemonList(game)
 
@@ -260,104 +178,76 @@ return function(mod)
 
       if type(def) == "table" then
 
-        local dex =
-          tonumber(def.dex)
+        local dex = tonumber(def.dex)
 
         if dex
           and dex >= 1
           and dex <= 251
-          and type(def.name) == "string"
-        then
+          and type(def.name) == "string" then
 
           species[#species + 1] = {
-
             id = id,
             dex = dex,
             name = def.name
-
           }
-
         end
-
       end
-
     end
 
-
     table.sort(
-
       species,
-
       function(a, b)
 
         if a.dex ~= b.dex then
           return a.dex < b.dex
         end
 
-        return tostring(a.id)
-          < tostring(b.id)
-
+        return tostring(a.id) < tostring(b.id)
       end
-
     )
-
 
     local rows = {}
 
     for _, mon in ipairs(species) do
 
       rows[#rows + 1] = {
-
-        label =
-          (
-            "%03d %s"
-          ):format(
-            mon.dex,
-            cleanName(mon.name)
-          ),
+        label = ("%03d %s"):format(
+          mon.dex,
+          cleanName(mon.name)
+        ),
 
         value = mon.id
-
       }
 
     end
 
     return rows
-
   end
 
-
-  ---------------------------------------------------------------------------
-  -- Wild Pokemon Menu
-  ---------------------------------------------------------------------------
+  -- ============================================================
+  -- WILD POKEMON MENU
+  -- ============================================================
 
   local function openWildPokemonMenu(game)
 
-    local rows =
-      buildWildPokemonList(game)
+    local rows = buildWildPokemonList(game)
 
     if #rows == 0 then
       return
     end
 
     openList(
-
       game,
-
       "WILD POKEMON",
-
       rows,
 
       function(item, menu)
 
-        if not item
-          or not item.value
-        then
+        if not item or not item.value then
           return
         end
 
-        nextWildSpecies =
-          item.value
+        nextWildSpecies = item.value
 
         menu:close()
 
@@ -369,33 +259,20 @@ return function(mod)
           and cleanName(def.name)
           or tostring(item.value)
 
-        local TextBox =
-          require("src.render.TextBox")
-
         game.stack:push(
-
           TextBox.new(
-
             game,
-
-            (
-              "NEXT WILD POKEMON:\n%s"
-            ):format(name)
-
+            ("NEXT WILD POKEMON:\n%s"):format(name)
           )
-
         )
 
       end
-
     )
-
   end
 
-
-  ---------------------------------------------------------------------------
-  -- Item Categories
-  ---------------------------------------------------------------------------
+  -- ============================================================
+  -- ITEM CATEGORIES
+  -- ============================================================
 
   local function buildItemCategories(game)
 
@@ -411,41 +288,32 @@ return function(mod)
       and game.data.items
 
     if type(data) ~= "table" then
-
-      return
-        balls,
-        items,
-        tms,
-        hms,
-        keyItems
-
+      return balls, items, tms, hms, keyItems
     end
-
 
     for id, def in pairs(data) do
 
       if type(def) == "table" then
 
         local name =
-          cleanName(
-            def.name or id
-          )
+          cleanName(def.name or id)
 
         local upper =
           tostring(id):upper()
 
-
-        ---------------------------------------------------------------------
-        -- Pokeballs
-        -- Includes normal balls and Kurt's Apricorn balls.
-        ---------------------------------------------------------------------
+        -- ======================================================
+        -- POKEBALLS
+        -- ======================================================
 
         local isBall =
+
           upper == "POKE_BALL"
           or upper == "GREAT_BALL"
           or upper == "ULTRA_BALL"
           or upper == "MASTER_BALL"
           or upper == "SAFARI_BALL"
+
+          -- Kurt's Apricorn Balls
           or upper == "FAST_BALL"
           or upper == "LEVEL_BALL"
           or upper == "LURE_BALL"
@@ -454,75 +322,57 @@ return function(mod)
           or upper == "LOVE_BALL"
           or upper == "HEAVY_BALL"
 
+          -- Crystal Park Ball
+          or upper == "PARK_BALL"
 
         if isBall then
 
           balls[#balls + 1] = {
-
             label = name,
             value = id,
             sortName = name
-
           }
-
 
         elseif upper:match("^TM[_%d]") then
 
           tms[#tms + 1] = {
-
             label = name,
             value = id,
             sortName = name
-
           }
-
 
         elseif upper:match("^HM[_%d]") then
 
           hms[#hms + 1] = {
-
             label = name,
             value = id,
             sortName = name
-
           }
-
 
         elseif def.keyItem == true then
 
           keyItems[#keyItems + 1] = {
-
             label = name,
             value = id,
             sortName = name
-
           }
-
 
         else
 
           items[#items + 1] = {
-
             label = name,
             value = id,
             sortName = name
-
           }
 
         end
-
       end
-
     end
-
 
     local function sortRows(a, b)
-
       return tostring(a.sortName)
         < tostring(b.sortName)
-
     end
-
 
     table.sort(balls, sortRows)
     table.sort(items, sortRows)
@@ -530,20 +380,12 @@ return function(mod)
     table.sort(hms, sortRows)
     table.sort(keyItems, sortRows)
 
-
-    return
-      balls,
-      items,
-      tms,
-      hms,
-      keyItems
-
+    return balls, items, tms, hms, keyItems
   end
 
-
-  ---------------------------------------------------------------------------
-  -- Pokeballs
-  ---------------------------------------------------------------------------
+  -- ============================================================
+  -- POKEBALL MENU
+  -- ============================================================
 
   local function openPokeballsMenu(game)
 
@@ -551,39 +393,23 @@ return function(mod)
       buildItemCategories(game)
 
     openList(
-
       game,
-
       "POKEBALLS",
-
       balls,
 
       function(item)
 
-        if giveItem(
-          game,
-          item.value,
-          1
-        )
-        then
-
-          playSound(
-            game,
-            "Get_Item1"
-          )
-
+        if giveItem(game, item.value, 1) then
+          playSound(game, "Get_Item1")
         end
 
       end
-
     )
-
   end
 
-
-  ---------------------------------------------------------------------------
-  -- Items
-  ---------------------------------------------------------------------------
+  -- ============================================================
+  -- ITEMS MENU
+  -- ============================================================
 
   local function openItemsMenu(game)
 
@@ -591,39 +417,23 @@ return function(mod)
       buildItemCategories(game)
 
     openList(
-
       game,
-
       "ITEMS",
-
       items,
 
       function(item)
 
-        if giveItem(
-          game,
-          item.value,
-          1
-        )
-        then
-
-          playSound(
-            game,
-            "Get_Item1"
-          )
-
+        if giveItem(game, item.value, 1) then
+          playSound(game, "Get_Item1")
         end
 
       end
-
     )
-
   end
 
-
-  ---------------------------------------------------------------------------
-  -- TMs / HMs
-  ---------------------------------------------------------------------------
+  -- ============================================================
+  -- TM / HM MENU
+  -- ============================================================
 
   local function openTmHmMenu(game)
 
@@ -640,41 +450,24 @@ return function(mod)
       rows[#rows + 1] = item
     end
 
-
     openList(
-
       game,
-
       "TMS / HMS",
-
       rows,
 
       function(item)
 
-        if giveItem(
-          game,
-          item.value,
-          1
-        )
-        then
-
-          playSound(
-            game,
-            "Get_Item1"
-          )
-
+        if giveItem(game, item.value, 1) then
+          playSound(game, "Get_Item1")
         end
 
       end
-
     )
-
   end
 
-
-  ---------------------------------------------------------------------------
-  -- Key Items
-  ---------------------------------------------------------------------------
+  -- ============================================================
+  -- KEY ITEMS MENU
+  -- ============================================================
 
   local function openKeyItemsMenu(game)
 
@@ -682,39 +475,23 @@ return function(mod)
       buildItemCategories(game)
 
     openList(
-
       game,
-
       "KEY ITEMS",
-
       keyItems,
 
       function(item)
 
-        if giveItem(
-          game,
-          item.value,
-          1
-        )
-        then
-
-          playSound(
-            game,
-            "Get_Key_Item"
-          )
-
+        if giveItem(game, item.value, 1) then
+          playSound(game, "Get_Key_Item")
         end
 
       end
-
     )
-
   end
 
-
-  ---------------------------------------------------------------------------
-  -- EXP Multiplier
-  ---------------------------------------------------------------------------
+  -- ============================================================
+  -- EXP MULTIPLIER MENU
+  -- ============================================================
 
   local function openExpMenu(game)
 
@@ -747,30 +524,20 @@ return function(mod)
 
     }
 
-
     openList(
-
       game,
-
       "EXP MULT",
-
       rows,
 
       function(item)
-
-        expMultiplier =
-          item.value
-
+        expMultiplier = item.value
       end
-
     )
-
   end
 
-
-  ---------------------------------------------------------------------------
-  -- Money
-  ---------------------------------------------------------------------------
+  -- ============================================================
+  -- MONEY MENU
+  -- ============================================================
 
   local function openMoneyMenu(game)
 
@@ -798,157 +565,154 @@ return function(mod)
 
     }
 
-
     openList(
-
       game,
-
       "MONEY",
-
       rows,
 
       function(item)
 
         local success =
-          setMoney(
-            game,
-            item.value
-          )
+          setMoney(game, item.value)
 
         if success then
-
-          playSound(
-            game,
-            "Press_AB"
-          )
-
+          playSound(game, "Press_AB")
         end
 
       end
-
     )
-
   end
 
-
-  ---------------------------------------------------------------------------
-  -- Heal Party
-  ---------------------------------------------------------------------------
+  -- ============================================================
+  -- HEAL PARTY
+  --
+  -- Uses Gen1Recomp's native Pokemon.heal()
+  -- so HP, PP and status are restored.
+  -- ============================================================
 
   local function healParty(game)
 
-    if not game then
+    if not game
+      or not game.save
+      or type(game.save.party) ~= "table" then
+
       return false
     end
 
+    local healed = false
 
-    if game.runCommand then
-
-      local ok =
-        pcall(
-          function()
-
-            game:runCommand(
-              "heal_party"
-            )
-
-          end
-        )
-
-      if ok then
-        return true
-      end
-
-    end
-
-
-    local save =
-      game.save
-
-    if not save
-      or type(save.party) ~= "table"
-    then
-      return false
-    end
-
-
-    for _, mon in ipairs(save.party) do
+    for _, mon in ipairs(game.save.party) do
 
       if type(mon) == "table"
-        and not mon.isEgg
-      then
+        and not mon.isEgg then
 
-        if mon.stats
-          and mon.stats.hp
-        then
+        local ok =
+          pcall(
+            Pokemon.heal,
+            mon
+          )
 
-          mon.hp =
-            mon.stats.hp
-
+        if ok then
+          healed = true
         end
 
-        mon.status = nil
-
       end
-
     end
 
-
-    return true
-
+    return healed
   end
 
-
-  ---------------------------------------------------------------------------
-  -- All Badges
-  --
-  -- Currently retained in the menu but still needs to be connected to the
-  -- actual Crystal badge storage.
-  ---------------------------------------------------------------------------
+  -- ============================================================
+  -- ALL BADGES
+  -- ============================================================
 
   local function giveAllBadges(game)
 
     if not game
-      or not game.save
-    then
+      or not game.save then
+
       return false
     end
 
     game.save.inventory =
-      game.save.inventory
-      or {}
+      game.save.inventory or {}
 
     local count = 0
 
+    -- Preferred source:
+    -- Gen1Recomp exposes the badge definitions through
+    -- data.constants.badges.
 
-    for id, _ in pairs(game.save.inventory) do
+    local constants =
+      game.data
+      and game.data.constants
 
-      if tostring(id):upper():find(
-        "BADGE",
-        1,
-        true
-      )
-      then
+    local badges =
+      constants
+      and constants.badges
 
-        game.save.inventory[id] =
-          1
+    if type(badges) == "table" then
 
-        count =
-          count + 1
+      for _, badge in ipairs(badges) do
 
+        local id
+
+        if type(badge) == "table" then
+          id = badge.id
+        else
+          id = badge
+        end
+
+        if id then
+
+          game.save.inventory[id] = 1
+          count = count + 1
+
+        end
       end
 
     end
 
+    -- Fallback for data sets where badge IDs are directly
+    -- represented in the item table.
+
+    if count == 0
+      and game.data
+      and type(game.data.items) == "table" then
+
+      for id, def in pairs(game.data.items) do
+
+        if type(id) == "string"
+          and id:upper():find(
+            "BADGE",
+            1,
+            true
+          ) then
+
+          game.save.inventory[id] = 1
+          count = count + 1
+
+        elseif type(def) == "table"
+          and type(def.name) == "string"
+          and def.name:upper():find(
+            "BADGE",
+            1,
+            true
+          ) then
+
+          game.save.inventory[id] = 1
+          count = count + 1
+
+        end
+      end
+    end
 
     return count > 0
-
   end
 
-
-  ---------------------------------------------------------------------------
-  -- Gender Modifier
-  ---------------------------------------------------------------------------
+  -- ============================================================
+  -- GENDER MODIFIER MENU
+  -- ============================================================
 
   local function openGenderMenu(game)
 
@@ -971,30 +735,20 @@ return function(mod)
 
     }
 
-
     openList(
-
       game,
-
       "GENDER MOD",
-
       rows,
 
       function(item)
-
-        genderMode =
-          item.value
-
+        genderMode = item.value
       end
-
     )
-
   end
 
-
-  ---------------------------------------------------------------------------
-  -- Main Codes Menu
-  ---------------------------------------------------------------------------
+  -- ============================================================
+  -- CODES MENU ROWS
+  -- ============================================================
 
   local function buildCodesRows(game)
 
@@ -1011,23 +765,16 @@ return function(mod)
       },
 
       {
-        label =
-          toggleLabel(
-            "WTW",
-            walkThroughWalls
-          ),
-
+        label = toggleLabel(
+          "WTW",
+          walkThroughWalls
+        ),
         value = "walls"
       },
 
       {
-        label =
-          (
-            "EXP MULT: %dX"
-          ):format(
-            expMultiplier
-          ),
-
+        label = ("EXP MULT: %dX")
+          :format(expMultiplier),
         value = "exp"
       },
 
@@ -1042,12 +789,10 @@ return function(mod)
       },
 
       {
-        label =
-          toggleLabel(
-            "SHINY",
-            shinyEnabled
-          ),
-
+        label = toggleLabel(
+          "SHINY",
+          shinyEnabled
+        ),
         value = "shiny"
       },
 
@@ -1082,62 +827,72 @@ return function(mod)
       },
 
       {
-        label =
-          (
-            "GENDER: %s"
-          ):format(
-            genderMode
-          ),
-
+        label = ("GENDER: %s")
+          :format(genderMode),
         value = "gender"
       }
 
     }
-
   end
 
-
-  ---------------------------------------------------------------------------
-  -- Codes Menu
-  ---------------------------------------------------------------------------
+  -- ============================================================
+  -- CODES MENU
+  -- ============================================================
 
   local function openCodesMenu(game)
 
     local rows =
       buildCodesRows(game)
 
-
     openList(
-
       game,
-
       "CODES",
-
       rows,
 
       function(item, menu)
 
-        ---------------------------------------------------------------------
-        -- Heal Party
-        ---------------------------------------------------------------------
+        -- ======================================================
+        -- HEAL PARTY
+        -- ======================================================
 
         if item.value == "heal" then
 
-          healParty(game)
+          local success =
+            healParty(game)
 
-          playSound(
-            game,
-            "Press_AB"
-          )
+          menu:close()
+
+          if success then
+
+            playSound(
+              game,
+              "Press_AB"
+            )
+
+            game.stack:push(
+              TextBox.new(
+                game,
+                "PARTY FULLY HEALED!"
+              )
+            )
+
+          else
+
+            game.stack:push(
+              TextBox.new(
+                game,
+                "HEAL FAILED!"
+              )
+            )
+
+          end
 
           return
-
         end
 
-
-        ---------------------------------------------------------------------
-        -- Wild Pokemon
-        ---------------------------------------------------------------------
+        -- ======================================================
+        -- WILD POKEMON
+        -- ======================================================
 
         if item.value == "wild" then
 
@@ -1146,13 +901,11 @@ return function(mod)
           openWildPokemonMenu(game)
 
           return
-
         end
 
-
-        ---------------------------------------------------------------------
-        -- WTW
-        ---------------------------------------------------------------------
+        -- ======================================================
+        -- WALK THROUGH WALLS
+        -- ======================================================
 
         if item.value == "walls" then
 
@@ -1164,13 +917,11 @@ return function(mod)
           openCodesMenu(game)
 
           return
-
         end
 
-
-        ---------------------------------------------------------------------
-        -- EXP Multiplier
-        ---------------------------------------------------------------------
+        -- ======================================================
+        -- EXP MULT
+        -- ======================================================
 
         if item.value == "exp" then
 
@@ -1179,13 +930,11 @@ return function(mod)
           openExpMenu(game)
 
           return
-
         end
 
-
-        ---------------------------------------------------------------------
-        -- Money
-        ---------------------------------------------------------------------
+        -- ======================================================
+        -- MONEY
+        -- ======================================================
 
         if item.value == "money" then
 
@@ -1194,31 +943,30 @@ return function(mod)
           openMoneyMenu(game)
 
           return
-
         end
 
-
-        ---------------------------------------------------------------------
-        -- All Badges
-        ---------------------------------------------------------------------
+        -- ======================================================
+        -- ALL BADGES
+        -- ======================================================
 
         if item.value == "badges" then
 
-          giveAllBadges(game)
+          local success =
+            giveAllBadges(game)
 
-          playSound(
-            game,
-            "Press_AB"
-          )
+          if success then
+            playSound(
+              game,
+              "Press_AB"
+            )
+          end
 
           return
-
         end
 
-
-        ---------------------------------------------------------------------
-        -- Shiny
-        ---------------------------------------------------------------------
+        -- ======================================================
+        -- SHINY
+        -- ======================================================
 
         if item.value == "shiny" then
 
@@ -1230,14 +978,11 @@ return function(mod)
           openCodesMenu(game)
 
           return
-
         end
 
-
-        ---------------------------------------------------------------------
-        -- Master Ball
-        -- Gives 99.
-        ---------------------------------------------------------------------
+        -- ======================================================
+        -- MASTER BALL - 99
+        -- ======================================================
 
         if item.value == "master_ball" then
 
@@ -1245,8 +990,7 @@ return function(mod)
             game,
             "MASTER_BALL",
             99
-          )
-          then
+          ) then
 
             playSound(
               game,
@@ -1256,14 +1000,11 @@ return function(mod)
           end
 
           return
-
         end
 
-
-        ---------------------------------------------------------------------
-        -- Rare Candy
-        -- Gives 99.
-        ---------------------------------------------------------------------
+        -- ======================================================
+        -- RARE CANDY - 99
+        -- ======================================================
 
         if item.value == "rare_candy" then
 
@@ -1271,8 +1012,7 @@ return function(mod)
             game,
             "RARE_CANDY",
             99
-          )
-          then
+          ) then
 
             playSound(
               game,
@@ -1282,13 +1022,11 @@ return function(mod)
           end
 
           return
-
         end
 
-
-        ---------------------------------------------------------------------
-        -- Pokeballs
-        ---------------------------------------------------------------------
+        -- ======================================================
+        -- POKEBALLS
+        -- ======================================================
 
         if item.value == "pokeballs" then
 
@@ -1297,13 +1035,11 @@ return function(mod)
           openPokeballsMenu(game)
 
           return
-
         end
 
-
-        ---------------------------------------------------------------------
-        -- Items
-        ---------------------------------------------------------------------
+        -- ======================================================
+        -- ITEMS
+        -- ======================================================
 
         if item.value == "items" then
 
@@ -1312,13 +1048,11 @@ return function(mod)
           openItemsMenu(game)
 
           return
-
         end
 
-
-        ---------------------------------------------------------------------
-        -- TMs / HMs
-        ---------------------------------------------------------------------
+        -- ======================================================
+        -- TMS / HMS
+        -- ======================================================
 
         if item.value == "tm_hm" then
 
@@ -1327,13 +1061,11 @@ return function(mod)
           openTmHmMenu(game)
 
           return
-
         end
 
-
-        ---------------------------------------------------------------------
-        -- Key Items
-        ---------------------------------------------------------------------
+        -- ======================================================
+        -- KEY ITEMS
+        -- ======================================================
 
         if item.value == "key_items" then
 
@@ -1342,13 +1074,11 @@ return function(mod)
           openKeyItemsMenu(game)
 
           return
-
         end
 
-
-        ---------------------------------------------------------------------
-        -- Gender
-        ---------------------------------------------------------------------
+        -- ======================================================
+        -- GENDER
+        -- ======================================================
 
         if item.value == "gender" then
 
@@ -1357,148 +1087,102 @@ return function(mod)
           openGenderMenu(game)
 
           return
-
         end
 
       end
-
     )
-
   end
 
-
-  ---------------------------------------------------------------------------
-  -- Add CODES to Start Menu
-  ---------------------------------------------------------------------------
+  -- ============================================================
+  -- ADD CODES TO START MENU
+  -- ============================================================
 
   mod.hooks:wrap(
-
     "ui.start_menu.items",
 
     function(next, game, items)
 
       mod.ui.insertBefore(
-
         items,
-
         "OPTION",
-
         {
-
           label = "CODES",
 
           onSelect = function()
-
             openCodesMenu(game)
-
           end
-
         }
-
       )
 
-      return next(
-        game,
-        items
-      )
-
+      return next(game, items)
     end
-
   )
 
-
-  ---------------------------------------------------------------------------
-  -- Wild Pokemon Modifier
-  ---------------------------------------------------------------------------
+  -- ============================================================
+  -- WILD POKEMON MODIFIER
+  -- ============================================================
 
   mod.hooks:wrap(
-
     "encounter.species",
 
     function(next, enc, ctx)
 
       local result =
-        next(
-          enc,
-          ctx
-        )
-
+        next(enc, ctx)
 
       if nextWildSpecies == nil then
         return result
       end
 
-
       if result == nil then
         return result
       end
-
 
       local species =
         nextWildSpecies
 
       nextWildSpecies = nil
 
-
       local modified = {}
 
-
       for key, value in pairs(result) do
-
-        modified[key] =
-          value
-
+        modified[key] = value
       end
-
 
       modified.species =
         species
 
-
       return modified
-
     end
-
   )
 
-
-  ---------------------------------------------------------------------------
-  -- EXP Multiplier
-  ---------------------------------------------------------------------------
+  -- ============================================================
+  -- EXP MULTIPLIER
+  -- ============================================================
 
   mod.hooks:wrap(
-
     "exp.gain",
 
     function(next, exp, ctx)
 
       local result =
-        next(
-          exp,
-          ctx
-        )
-
+        next(exp, ctx)
 
       if expMultiplier <= 1 then
         return result
       end
 
-
       return math.floor(
         result * expMultiplier
       )
-
     end
-
   )
 
-
-  ---------------------------------------------------------------------------
-  -- Walk Through Walls
-  ---------------------------------------------------------------------------
+  -- ============================================================
+  -- WALK THROUGH WALLS
+  -- ============================================================
 
   mod.hooks:wrap(
-
     "movement.collision",
 
     function(next, allowed, ctx)
@@ -1507,25 +1191,19 @@ return function(mod)
         return true
       end
 
-
       return next(
         allowed,
         ctx
       )
-
     end
-
   )
 
-
-  ---------------------------------------------------------------------------
-  -- Exports
-  ---------------------------------------------------------------------------
+  -- ============================================================
+  -- EXPORTS
+  -- ============================================================
 
   mod.exports =
-    mod.exports
-    or {}
-
+    mod.exports or {}
 
   mod.exports.setNextWild =
     function(species)
@@ -1533,91 +1211,61 @@ return function(mod)
       local game =
         mod.game
 
-
       if not game
         or not game.data
         or not game.data.pokemon
-        or not game.data.pokemon[species]
-      then
+        or not game.data.pokemon[species] then
 
         return false
-
       end
-
 
       local def =
         game.data.pokemon[species]
 
-
       local dex =
         tonumber(def.dex)
 
-
       if not dex
         or dex < 1
-        or dex > 251
-      then
+        or dex > 251 then
 
         return false
-
       end
-
 
       nextWildSpecies =
         species
 
-
       return true
-
     end
-
 
   mod.exports.clearNextWild =
     function()
-
-      nextWildSpecies =
-        nil
-
+      nextWildSpecies = nil
     end
-
 
   mod.exports.getNextWild =
     function()
-
       return nextWildSpecies
-
     end
-
 
   mod.exports.getExpMultiplier =
     function()
-
       return expMultiplier
-
     end
-
 
   mod.exports.getWalkThroughWalls =
     function()
-
       return walkThroughWalls
-
     end
-
 
   mod.exports.getShiny =
     function()
-
       return shinyEnabled
-
     end
-
 
   mod.exports.getGenderMode =
     function()
-
       return genderMode
-
     end
 
 end

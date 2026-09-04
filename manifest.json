@@ -1,7 +1,7 @@
 {
   "id": "crystal_gameshark",
   "name": "Crystal GameShark",
-  "version": "0.1.1",
+  "version": "0.2.0",
   "entry": "main.lua",
   "api": 2,
   "games": ["crystal"],
